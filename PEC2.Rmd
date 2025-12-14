@@ -1,0 +1,53 @@
+---
+title: "PEC2"
+author: "Bruno Bel"
+date: "2025-12-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+```
+#Introducción
+
+Los archivos y el código generado para realizar los análisis posteriores se encuentran en el repositorio llamado "Analisis-Datos-Omicos---PEC-2" al que se puede acceder mediante el siguiente ![enlace al repositorio.](https://github.com/bruniix/Analisis-Datos-Omicos---PEC-2).
+
+Para dicha resolución se ha trabajado con R y utilizando RMarkdown para la escritura y ejecución.
+
+#Obtención de los datos
+
+En primer lugar, tal como se indica en la propuesta del ejercicio, los datos de el estudio se encuentran en la plataforma Gene Expression Omnibus mediante el identificador [GSE161731](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE161731).
+
+Como se describe en la plataforma, en el estudio dispusieron de 46 pacientes con COVID-19 alguno de ellos tomando varias muestras en momentos distintos llegando al número total de 77 muestras de sangre periférica.
+
+Para la comparación transcriptómica y de la expressión génica compararon las muestras con las almacenadas de otros pacientes diagnosticados con infección respiratoria aguda debída a coronavirus estacional, al virus de la gripe, neumonía bacteriana o pacientes control.
+
+Además los pacientes de estudio fueron divididos en grupos según la gravedad de la infección aparente debido a lo sintomas expresados y mediante tiempo en relación al desarrollo de la enfermedad.
+
+Para empezar vamos a descargar los datos mediante el paquete GEOquery que nos permite acceder directamente a la base de datos.
+
+```{r}
+#carga de librerias y paquetes
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+paquetes <- c("GEOquery", "SummarizedExperiment", "EnsDb.Hsapiens.v86", "GenomicFeatures")
+for (p in paquetes) {
+    if (!requireNamespace(p, quietly = TRUE))
+        BiocManager::install(p)
+    library(p)
+}
+```
+
+
+```{r}
+
+getGEO("GSE161731")
+
+
+
+```
+
+
+
