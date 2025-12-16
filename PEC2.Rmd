@@ -36,18 +36,106 @@ paquetes <- c("GEOquery", "SummarizedExperiment", "EnsDb.Hsapiens.v86", "Genomic
 for (p in paquetes) {
     if (!requireNamespace(p, quietly = TRUE))
         BiocManager::install(p)
-    library(p)
+    library(p, character.only = TRUE)
 }
-```
 
+
+
+```
+## Descarga datos GEO, preparación datos contaje y metadatos
 
 ```{r}
 
-getGEO("GSE161731")
+DATA <- getGEO("GSE161731")
 
+DATA[[1]]
+
+cat("Habiendo descargado los datos mediante el paquete GEOquery, obtenemos eluna lista que contiene ub objeto de tipo:",class(DATA[[1]]))
+
+
+cat("\n Utilizando la funcion experimentData() visualizamos la información asociada al caso de GEO y el enlace para realizar lad escarga de los datos de expresión 'assay data'.")
+
+experimentData(DATA[[1]])
+
+download.file("ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE161nnn/GSE161731/suppl/GSE161731_counts.csv.gz", destfile = "GSE161731_GEO_submission_counts.txt.gz")
+
+count_matrix <- read.csv("GSE161731_GEO_submission_counts.txt.gz", header = FALSE, row.names = 1)
+
+colnames(count_matrix) <- count_matrix[1,]
+
+count_matrix <- count_matrix[-1, ]
+
+count_matrix <- as.matrix(count_matrix)
+
+cat("\n Las dimensiones del objeto descargado que contiene los datos de expresión son:",dim(count_matrix), "Podemos hacernos una idea de la distribución de los datos viendo la expresión genica para algunas de las muestras.")
+
+knitr::kable(count_matrix[1:10, 1:10])
+
+metadata <- pData(DATA[[1]])
+
+cat("\n Las dimensiones del objeto importado de la base de datos de GEO, que contiene los metadatos (información en relación a las muestras y los pacientes) son", dim(metadata), "Podemos hacernos una idea de la distribución de los datos viendo los registros para algunas muestras.")
+
+
+knitr::kable(metadata[1:10, 1:10])
 
 
 ```
 
+Vemos que los metadatos importados de la base de datos GEO tienen su identificador própio, lo que nos impide relacionarlos con las muestras correspondientes. Modificamos el nombre de las filas para que corresponda con los carácteres de interés de la variable "titulo".
 
+```{r}
+library(tidyverse)
+rownames(metadata) <- str_sub(metadata$title, 14)
+```
+
+Para preparar el objeto SummarizedExperiment debemos en primer lugar asegurar que disponemos de información para las muestas de las cuales se ha obtenido el trasnscriptoma y la anotación genica para los genes cuantificados.
+
+Ya hemos visto que las dimensiones eran distintas para ambos objetos, por lo que cabe suponer que hay 3 muestras de las cuales no se dispone información (ncol(count_matrix)-nrow(metadata)). 
+
+```{r}
+muestras <- intersect(rownames(metadata), colnames(count_matrix))
+
+cat("Al haber realizado la intersección tenemos el mismo identificador, y por tanto información completa, para un total de", length(muestras)," muestras.")
+
+count_filtrado <- count_matrix[, muestras]
+metadata_filtrado <- metadata[muestras, ]
+
+
+```
+## Descarga datos genes y filtrado según genes en común
+
+```{r}
+#genes rowranges 
+
+gene_ranges <- genes(EnsDb.Hsapiens.v86)
+
+gene_ids <- rownames(count_filtrado)
+
+gene_ids_annotation <- names(gene_ranges)
+
+gene_comun <- intersect(gene_ids, gene_ids_annotation)
+
+count_filtrado <- count_filtrado[gene_comun, ]
+gene_ranges_final <- gene_ranges[gene_comun]
+
+cat("Después de haber seleccionado los genes y carácteristicas comunes las dimensiones de la matriz de contajes quedan siendo: ", dim(count_filtrado))
+
+```
+
+## Creación obtejo SummarizedExperiment
+
+Una vez tenemos la matriz de contajes con las observaciones correspondientes, los metadatos con el nombre de fila correcto y hemos comprobado la coincidencia y orden correcto, podemos crear el objeto SummarizedExperiment para conseguir tener todos los datos enlazados.
+
+```{r}
+se_object <- SummarizedExperiment(
+    assays = list(counts = count_filtrado),
+    colData = metadata_filtrado,
+    rowRanges = gene_ranges_final
+)
+
+print(se_object)
+
+
+
+```
 
