@@ -32,7 +32,7 @@ Para empezar vamos a descargar los datos mediante el paquete GEOquery que nos pe
 if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 
-paquetes <- c("GEOquery", "SummarizedExperiment", "EnsDb.Hsapiens.v86", "GenomicFeatures")
+paquetes <- c("GEOquery", "SummarizedExperiment", "EnsDb.Hsapiens.v86", "GenomicFeatures", "edgeR")
 for (p in paquetes) {
     if (!requireNamespace(p, quietly = TRUE))
         BiocManager::install(p)
@@ -127,15 +127,133 @@ cat("Después de haber seleccionado los genes y carácteristicas comunes las dim
 Una vez tenemos la matriz de contajes con las observaciones correspondientes, los metadatos con el nombre de fila correcto y hemos comprobado la coincidencia y orden correcto, podemos crear el objeto SummarizedExperiment para conseguir tener todos los datos enlazados.
 
 ```{r}
-se_object <- SummarizedExperiment(
+se <- SummarizedExperiment(
     assays = list(counts = count_filtrado),
     colData = metadata_filtrado,
     rowRanges = gene_ranges_final
 )
 
-print(se_object)
+print(se)
 
 
+```
+
+Como se observa al mostrar el SummarizedExperiment, está formado por 57602 genes a los cuáles se dispone de registro de expressión para 194 muestras, con 67 columnas con información de los metadatos y 6 variables en relación a los genes.
+
+
+# Limpieza y selección de datos
+
+## Selección de cohorte
+
+En primer lugar seleccionamos la variables de interés para los metadatos y cambiamos el nombre para mejor interpretación.
+
+```{r}
+
+str(colData(se))
+
+col_metadata_select <- c("title", "geo_accession", "age:ch1", "batch:ch1", "cohort:ch1", "gender:ch1", "hospitalized:ch1", "race:ch1", "subject_id:ch1", "time_since_onset:ch1")
+
+colData(se) <- colData(se)[, col_metadata_select]
+
+cat("Columnas de metadatos seleccionadas:\n")
+
+colnames(colData(se))[3:10] <- c("age", "batch", "cohort", "gender", "hospitalized", "race", "id", "time_since_onset")
+
+colnames(colData(se))
+
+
+
+```
+
+Seleccionamos las cohortes en las que estamos interesados, cogeremos solo las muestras que corresponden clasificadas como: COVID19, Bacterial y healthy.
+
+```{r}
+library(tidyverse)
+
+cat("Actualmente las clasificaciones para las variables de la cohorte son:", unique(colData(se)$cohort))
+
+cohortes_seleccionadas <- c("COVID-19", "Bacterial", "healthy")
+
+se <- se[, se$cohort %in% cohortes_seleccionadas]
+
+
+table(se$cohort)
+
+
+```
+
+Vemos que del número inicial de muestras quedan 117 según las cohortes y pacientes con el estado inmunológico de interés-
+
+## Revisión datos
+
+A continuación antes de passar al análisis de los datos, revisamos que no hayan individuos repetidos y que las variables sean del tipo que corresponde
+
+```{r}
+cat("El número de identificadores de las muestras y de entradas coincide:", length(colnames(se)) == length(unique(colData(se)$id)) )
+
+se <- se[, !duplicated(se$id)]
+
+cat("Habiendo eliminado los duplicados, ahora el número total de observaciones / muestras es de:", length(colnames(se)))
+
+colnames(se) <- se$id
+
+```
+
+Eliminamos espacios en blanco de la variable raza y cambiamos el tipo de variable: edad a númerica y batch, cohorte, genero y raza a factor.
+
+```{r}
+colData(se)$race <- gsub(" ", "_", colData(se)$race)
+
+variables_categoricas <- c("batch", "cohort", "gender", "race")
+
+colData(se)[variables_categoricas] <- lapply(colData(se)[variables_categoricas], as.factor)
+
+se_backup <- se
+
+```
+
+Al transformar la variable edad a númerica aparece el aviso de que se han introducido valores NA's. Buscamos los valores únicos para observar cuales no pueden ser asociados a un número entero.
+
+```{r}
+cat("Todos los valores de la variable 'age' :", unique(se$age))
+
+table(se$age)
+
+cat("El valor que se introduce como NA es la edad registrada como >89, puesto que es la única observación transformamos este número a 89 entero.")
+
+se$age <- gsub(">89", "89", se$age)
+
+se$age <- as.numeric(se$age)
+
+summary(se$age)
+
+```
+## Semilla aleatoria y selección de muestras.
+
+```{r}
+myseed <- sum(utf8ToInt("brunobelgomez"))
+cat("La semilla generada para la selección aleatoria de los datos es:", myseed)
+
+set.seed(myseed)
+select <- sample(1:ncol(se), 75)
+se <- se[, select]
+
+cat("Posterior a la selección aleatoria la distribución de muestras queda de la siguiente manera.")
+table(se$cohort)
+
+
+se_backup <- se
+
+```
+
+# Preprocesado, selección genes y transformación
+
+## Filtrado de genes
+
+Antes de realizar el análisis y clasificación debemos hacer una selección de los genes a contabilizar. Genes con una muy baja expresión o sin expresión no son relevantes para realizar la comparación entre grupos de distinta cohorte. 
+
+```{r}
+library(edgeR)
 
 ```
 
