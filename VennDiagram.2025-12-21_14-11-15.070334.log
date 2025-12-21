@@ -1,0 +1,16 @@
+INFO [2025-12-21 14:11:15] $x
+INFO [2025-12-21 14:11:15] list(rownames(subset(fit2, adj.P.Val < 0.05)), rownames(subset(fit2, 
+INFO [2025-12-21 14:11:15]     adj.P.Val < 0.05)))
+INFO [2025-12-21 14:11:15] 
+INFO [2025-12-21 14:11:15] $output
+INFO [2025-12-21 14:11:15] [1] TRUE
+INFO [2025-12-21 14:11:15] 
+INFO [2025-12-21 14:11:15] $filename
+INFO [2025-12-21 14:11:15] NULL
+INFO [2025-12-21 14:11:15] 
+INFO [2025-12-21 14:11:15] $category.names
+INFO [2025-12-21 14:11:15] c("Bacterial vs healthy", "COVID19 vs healthy")
+INFO [2025-12-21 14:11:15] 
+INFO [2025-12-21 14:11:15] [[5]]
+INFO [2025-12-21 14:11:15] 
+INFO [2025-12-21 14:11:15] 
