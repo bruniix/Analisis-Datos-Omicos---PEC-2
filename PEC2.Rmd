@@ -3,30 +3,67 @@ title: "PEC2"
 author: "Bruno Bel"
 date: "2025-12-14"
 output:
-  pdf_document:
-    toc: true
-    toc_depth: '3'
   html_document:
     toc: true
     toc_float:
       collapsed: true
       smooth_scroll: true
+    toc_depth: 4
+    number_sections: true
+    theme: flatly          
+    highlight: tango
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
     toc_depth: 3
     number_sections: true
-    theme: lumen
+    df_print: kable
+    highlight: pygments
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE
+)
 ```
+# Abstract
 
-#Introducción
+Este estudio presenta un análisis transcriptómico comparativo de muestras de sangre periférica procedentes de pacientes con COVID-19, infecciones bacterianas e individuos sanos, utilizando datos del estudio de McClain et al. El objetivo principal del estudio fue identificar la firma molecular específica de la infección por SARS-CoV-2 y los procesos biológicos. 
 
-Los archivos y el código generado para realizar los análisis posteriores se encuentran en el repositorio llamado "Analisis-Datos-Omicos---PEC-2" al que se puede acceder mediante el siguiente ![enlace al repositorio.]<https://github.com/bruniix/Analisis-Datos-Omicos---PEC-2>.
+En nuestra exploración tras un preprocesamiento y normalización de datos de RNA-seq, se realizó un análisis de expresión diferencial mediante modelos lineales. Los resultados revelaron una respuesta inmunitaria distintiva en COVID-19, una menor expresión génica en comparación a las infecciones bacterianas. Sin embargo, los genes sobreexpresados mostraron un enriquecimiento significativo en la respuesta inmune adaptativa y la regulación del ciclo celular. Estos hallazgos sugieren que, a pesar de una supresión transcriptómica generalizada, existe una activación específica de mecanismos de defensa celular y división nuclear esenciales para la respuesta del huésped ante el virus.
+
+# Objetivos
+
+El propósito central de este trabajo es caracterizar la respuesta molecular y célular del paciente frente a la infección por SARS-CoV-2 mediante técnicas de bioinformática y estadística. Los objetivos específicos son:
+
++ Identificar patrones de agrupamiento y posibles fuentes de variación técnica (efecto batch) mediante técnicas de reducción de la dimensionalidad.
+
++ Identificar genes diferencialmente expresados. Determinar la firma de expresión específica de pacientes con COVID-19 y compararla con la respuesta ante infecciones bacterianas para discernir patrones comunes y exclusivos.
+
++ Caracterizar funcionalmente la respuesta biológica. Interpretar biológicamente los genes identificados mediante el análisis de enriquecimiento.
+
+
+# Métodos
+
+Los datos analizados provienen de un subconjunto del estudio clínico de McClain et al., depositado en repositorios públicos de expresión génica. La naturaleza de los datos es transcriptómica, obtenida mediante RNA-seq de sangre periférica. El dataset original incluye recuentos de lecturas, junto con metadatos clínicos.que categorizan a los individuos en tres grupos: COVID-19, infección bacteriana y controles sanos.
+
+Se utiliza el paquete SummarizedExperiment para la gestión de datos y metadatos. Se aplicó un filtrado de genes con baja expresión para reducir el ruido y tener en cuenta genes con expresión real. La normalización se realizó mediante transformación logarítmica para estabilizar la varianza. 
+
+Empleamos el Análisis de Componentes Principales (PCA) y Heatmaps para evaluar la homogeneidad de los grupos y visualizar diferencias según variables categóricas. Acorde a esto definimos la matriz de diseño y contrastes. 
+
+Se utiliza la librería voom-lima, fijando un umbral de P.adj < 0.05 y logFC de 1.5.Para la interpretación biológica, se utiliza el paquete topGO. 
+
+Durante el análisis se incluyen gráficos asociados a los distintos objetos, generados por las funciones de las própias librerias o utilizando ggplot2.
+
+# Introducción
+
+Los archivos y el código generado para realizar los análisis posteriores se encuentran en el repositorio llamado "Analisis-Datos-Omicos---PEC-2" al que se puede acceder mediante el siguiente enlace https://github.com/bruniix/Analisis-Datos-Omicos---PEC-2.
 
 Para dicha resolución se ha trabajado con R y utilizando RMarkdown para la escritura y ejecución.
 
-#Obtención de los datos
+# Obtención de los datos
 
 En primer lugar, tal como se indica en la propuesta del ejercicio, los datos de el estudio se encuentran en la plataforma Gene Expression Omnibus mediante el identificador [GSE161731](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE161731).
 
@@ -68,8 +105,6 @@ cat("Habiendo descargado los datos mediante el paquete GEOquery, obtenemos eluna
 
 cat("\n Utilizando la funcion experimentData() visualizamos la información asociada al caso de GEO y el enlace para realizar lad escarga de los datos de expresión 'assay data'.")
 
-experimentData(DATA[[1]])
-
 download.file("https://ftp.ncbi.nlm.nih.gov/geo/series/GSE161nnn/GSE161731/suppl/GSE161731_counts.csv.gz", destfile = "GSE161731_GEO_submission_counts.txt.gz")
 
 count_matrix <- read.csv("GSE161731_GEO_submission_counts.txt.gz", header = FALSE, row.names = 1)
@@ -80,16 +115,14 @@ count_matrix <- count_matrix[-1, ]
 
 count_matrix <- as.matrix(count_matrix)
 
-cat("\n Las dimensiones del objeto descargado que contiene los datos de expresión son:",dim(count_matrix), "Podemos hacernos una idea de la distribución de los datos viendo la expresión genica para algunas de las muestras.")
+cat("\n Las dimensiones del objeto descargado que contiene los datos de expresión son:",dim(count_matrix), "\n Podemos hacernos una idea de la distribución de los datos viendo la expresión genica para algunas de las muestras.")
 
 knitr::kable(count_matrix[1:10, 1:10])
 
 metadata <- pData(DATA[[1]])
 
-cat("\n Las dimensiones del objeto importado de la base de datos de GEO, que contiene los metadatos (información en relación a las muestras y los pacientes) son", dim(metadata), "Podemos hacernos una idea de la distribución de los datos viendo los registros para algunas muestras.")
+cat("\n Las dimensiones del objeto importado de la base de datos de GEO \n, que contiene los metadatos (información en relación a las muestras y los pacientes) son", dim(metadata), "Podemos hacernos una idea de la distribución de los datos viendo los registros para algunas muestras.")
 
-
-knitr::kable(metadata[1:10, 1:10])
 
 
 ```
@@ -164,7 +197,7 @@ En primer lugar seleccionamos la variables de interés para los metadatos y camb
 
 ```{r}
 
-str(colData(se))
+
 
 col_metadata_select <- c("title", "geo_accession", "age:ch1", "batch:ch1", "cohort:ch1", "gender:ch1", "hospitalized:ch1", "race:ch1", "subject_id:ch1", "time_since_onset:ch1")
 
@@ -176,7 +209,7 @@ colnames(colData(se))[3:10] <- c("age", "batch", "cohort", "gender", "hospitaliz
 
 colnames(colData(se))
 
-
+str(colData(se))
 
 ```
 
@@ -185,7 +218,7 @@ Seleccionamos las cohortes en las que estamos interesados, cogeremos solo las mu
 ```{r}
 library(tidyverse)
 
-cat("Actualmente las clasificaciones para las variables de la cohorte son:", unique(colData(se)$cohort))
+cat("Actualmente las clasificaciones para las variables de la cohorte son:\n", unique(colData(se)$cohort))
 
 cohortes_seleccionadas <- c("COVID-19", "Bacterial", "healthy")
 
@@ -268,7 +301,7 @@ se_backup <- se
 
 Antes de realizar el análisis y clasificación debemos hacer una selección de los genes a contabilizar. Genes con una muy baja expresión o sin expresión no son relevantes para realizar la comparación entre grupos de distinta cohorte.
 
-Para ello utilizamos el paquete de Bioconductor edgeR, de este podemos utilziar la función cpm() para visualizar los contajes por millón y filtrar. Una función útil del paquete utilizado es la función filterByExpr() la cual realiza el cálculo mencionado anteriormente y simultáneamente seleccióna las filas o genes a seleccionar. ![Documentación paquete en Bioconductor](https://bioconductor.org/packages/release/bioc/vignettes/edgeR/inst/doc/edgeRUsersGuide.pdf)
+Para ello utilizamos el paquete de Bioconductor edgeR, de este podemos utilziar la función cpm() para visualizar los contajes por millón y filtrar. Una función útil del paquete utilizado es la función filterByExpr() la cual realiza el cálculo mencionado anteriormente y simultáneamente seleccióna las filas o genes a seleccionar. 
 
 ```{r}
 library(edgeR)
@@ -279,7 +312,7 @@ conservar <- filterByExpr(assay(se), group = se$cohort)
 
 se_filtrado <- se[conservar,]
 
-cat("\n Habiendo filtrado los genes con una menor o nula expresión nos queda el siguiente resumend el objeto:|n")
+cat("\n Habiendo filtrado los genes con una menor o nula expresión \n nos queda el siguiente resumen el objeto:\n")
 
 summary(se_filtrado)
 
@@ -446,7 +479,7 @@ se_filtrado$race <- droplevels(se_filtrado$race)
 race <- se_filtrado$race
 matriz <- model.matrix(~0 + cohort + race + sexo + age)
 
-matriz
+colnames(matriz)
 
 v <- voom(dge, matriz, plot = TRUE)
 
@@ -480,7 +513,6 @@ fit2 <- contrasts.fit(fit, contrastes)
 
 fit2 <- eBayes(fit2)
 
-fit2
 
 ```
 
@@ -503,7 +535,7 @@ cat("Primeras observaciones de los resultados de la comparación Bacterial vs He
 head(res_bacterial)
 
 
-cat("Utilizamos la función decidetest() para ver que genes está sobreexpresados o por debajo para ambas comparaciones. Establecemos los parametros lfc a 1.5 y p.value a 0.05 \n")
+cat("Utilizamos la función decidetest() para ver que genes está sobreexpresados \n o por debajo para ambas comparaciones. Establecemos los parametros lfc a 1.5 y p.value a 0.05 \n")
 
 summary(decideTests(fit2, lfc = 1.5, p.value = 0.05))
 
@@ -653,6 +685,13 @@ knitr::include_graphics("revigo-plot.jpg")
 De la misma manera que hemos mencionado antes, visualizamos la próximidad entre funcioes relacionadas y el peso que ocupan. Destacando la división celular y la respuesta inmune.
 
 # Conclusión
+
+```{r, echo=FALSE}
+
+
+```
+
+
 
 En este estudio hemos analizado un subgrupo de muestras del conjunto de datos de McClain et al., evaluando el perfil de expresión diferencial bajo distintas condiciones clínicas.
 
