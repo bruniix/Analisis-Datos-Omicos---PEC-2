@@ -3,6 +3,11 @@ title: "PEC2"
 author: "Bruno Bel"
 date: "2025-12-14"
 output:
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 3
+    number_sections: true
   html_document:
     toc: true
     toc_float:
@@ -12,13 +17,6 @@ output:
     number_sections: true
     theme: flatly          
     highlight: tango
-  pdf_document:
-    latex_engine: xelatex
-    toc: true
-    toc_depth: 3
-    number_sections: true
-    df_print: kable
-    highlight: pygments
 ---
 
 ```{r setup, include=FALSE}
